@@ -1,6 +1,11 @@
-chrome.identity.getProfileUserInfo({ accountStatus: "ANY" }, profile);
-chrome.identity.getAuthToken({ interactive: true }, authorize);
+messageList = []; //empty message list
+chrome.identity.getAuthToken({ interactive: true }, authorize); //authorizes the user if user is logged in, prompts login in not, then calls the authorize function
+chrome.identity.getProfileUserInfo({ accountStatus: "ANY" }, profile); //gets the profile of use logged in, then calls profile function <-- unused right now
 
+/**
+ * Gets the user info of profile logged in
+ * @param {ProfileUserInfo} user_info - object with user id and user email
+ */
 function profile(user_info) {
 	if (user_info) {
 		console.log(user_info.email);
@@ -8,6 +13,11 @@ function profile(user_info) {
 		console.log("no user info, sorry");
 	}
 }
+
+/**
+ * authorizes the user and accesses gmail api, gets and displays all the messages
+ * @param {string} token - authorization token used to gain access to gmail api
+ */
 function authorize(token) {
 	if (token) {
 		console.log("success");
@@ -30,7 +40,15 @@ function authorize(token) {
 						}
 					)
 						.then((data) => data.json())
-						.then((message) => process_message(message));
+						.then((email) => {
+							const mail = new Email(email);
+							messageList.push(mail);
+						})
+						.then(() => {
+							messageList.forEach((mail) => {
+								mail.displayMessage();
+							});
+						});
 				});
 			});
 	} else {
@@ -38,19 +56,36 @@ function authorize(token) {
 	}
 }
 
-function process_message(message) {
-	let string = message.payload.parts[0].body.data;
-	string = string.replace(/_/g, "");
-	string = string.replace(/=/g, "");
-	string = string.replace(/-/g, "");
-	// console.log(string);
-	// console.log(atob(string));
-	let converted_message = atob(string);
-	const msg = document.createElement("p");
-	msg.innerHTML = converted_message;
+class Email {
+	constructor(email) {
+		this.body = this.convertMessage(email.payload.parts[0].body.data);
+	}
 
-	const linebreak = document.createElement("hr");
+	/**
+	 * converts message from base64 to string
+	 * @param {base64} unconvertedMessage - message encoded by base64
+	 * @return {string} converted - converted message to string
+	 */
+	convertMessage(unconvertedMessage) {
+		unconvertedMessage = unconvertedMessage.replace(/_/g, "");
+		unconvertedMessage = unconvertedMessage.replace(/=/g, "");
+		unconvertedMessage = unconvertedMessage.replace(/-/g, "");
+		let converted = atob(unconvertedMessage);
+		return converted;
+	}
 
-	document.getElementById("content").appendChild(msg);
-	document.getElementById("content").appendChild(linebreak);
+	/**
+	 * adds message to html div container
+	 * adds a hr element (line) in between the email messages
+	 */
+	displayMessage() {
+		const msg = document.createElement("p");
+		msg.innerHTML = this.body;
+
+		const linebreak = document.createElement("hr");
+
+		document.getElementById("content").appendChild(msg);
+		document.getElementById("content").appendChild(linebreak);
+		console.log("yess");
+	}
 }

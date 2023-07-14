@@ -1,0 +1,16 @@
+{
+	"manifest_version": 2,
+	"version": "1.0.0",
+
+	"name": "emailSorter",
+	"description": "Summarizes unread emails!",
+	"oauth2": {
+		"client_id": "999248570451-1bmp7jmbpagu48c2epq7f68lgf61h5tu.apps.googleusercontent.com",
+		"scopes": ["https://www.googleapis.com/auth/gmail.readonly"]
+	},
+	"permissions": ["identity", "identity.email"],
+	"content_security_policy": "script-src 'self' 'unsafe-eval' https://apis.google.com; object-src 'self'",
+	"browser_action": {
+		"default_popup": "index.html"
+	}
+}

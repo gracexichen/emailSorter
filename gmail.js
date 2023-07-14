@@ -30,10 +30,27 @@ function authorize(token) {
 						}
 					)
 						.then((data) => data.json())
-						.then((message) => console.log(message));
+						.then((message) => process_message(message));
 				});
 			});
 	} else {
 		console.log("No authorization. Error: " + chrome.runtime.lastError);
 	}
+}
+
+function process_message(message) {
+	let string = message.payload.parts[0].body.data;
+	string = string.replace(/_/g, "");
+	string = string.replace(/=/g, "");
+	string = string.replace(/-/g, "");
+	// console.log(string);
+	// console.log(atob(string));
+	let converted_message = atob(string);
+	const msg = document.createElement("p");
+	msg.innerHTML = converted_message;
+
+	const linebreak = document.createElement("hr");
+
+	document.getElementById("content").appendChild(msg);
+	document.getElementById("content").appendChild(linebreak);
 }

@@ -17,7 +17,7 @@ function getSummary(emailObject, elementID) { //comminucates with chatgpt to get
     'content-type': "application/json"
     }
 
-    //send ("post") data to chatgpt api
+    //send ("post") parameters to chatgpt api
   fetch(url, {
     method: "POST",
     body: data,

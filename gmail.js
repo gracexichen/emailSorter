@@ -1,4 +1,5 @@
 messageList = []; //empty message list
+emailGlobalCount = 0
 chrome.identity.getAuthToken({ interactive: true }, authorize); //authorizes the user if user is logged in, prompts login in not, then calls the authorize function
 chrome.identity.getProfileUserInfo({ accountStatus: "ANY" }, profile); //gets the profile of use logged in, then calls profile function <-- unused right now
 
@@ -43,15 +44,11 @@ function authorize(token) {
 						.then((email) => {
 							const mail = new Email(email);
 							messageList.push(mail);
-						})
-						.then(() => {
-							messageList.forEach((mail) => {
-								mail.displayMessage();
-							});
+                            mail.displayMessage() })
 						});
 				});
-			});
-	} else {
+			}
+	else {
 		console.log("No authorization. Error: " + chrome.runtime.lastError);
 	}
 }
@@ -59,6 +56,8 @@ function authorize(token) {
 class Email {
 	constructor(email) {
 		this.body = this.convertMessage(email.payload.parts[0].body.data);
+        this.index = emailGlobalCount;
+        emailGlobalCount = emailGlobalCount+1;
 	}
 
 	/**
@@ -80,7 +79,9 @@ class Email {
 	 */
 	displayMessage() {
 		const msg = document.createElement("p");
-		msg.innerHTML = this.body;
+        msg.id = "email"+this.index;
+        console.log(msg.id)
+		getSummary(this, "email"+this.index)
 
 		const linebreak = document.createElement("hr");
 

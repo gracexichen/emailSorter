@@ -5,7 +5,7 @@
 	"name": "emailSorter",
 	"description": "Summarizes unread emails!",
 	"oauth2": {
-		"client_id": "999248570451-1bmp7jmbpagu48c2epq7f68lgf61h5tu.apps.googleusercontent.com",
+		"client_id": "999248570451-vnjbfj3vskcf63b4a0lih2slln86cbuc.apps.googleusercontent.com",
 		"scopes": ["https://www.googleapis.com/auth/gmail.readonly"]
 	},
 	"permissions": ["identity", "identity.email"],

@@ -1,5 +1,5 @@
 messageList = []; //empty message list
-emailGlobalCount = 0
+emailGlobalCount = 0;
 chrome.identity.getAuthToken({ interactive: true }, authorize); //authorizes the user if user is logged in, prompts login in not, then calls the authorize function
 chrome.identity.getProfileUserInfo({ accountStatus: "ANY" }, profile); //gets the profile of use logged in, then calls profile function <-- unused right now
 
@@ -44,20 +44,37 @@ function authorize(token) {
 						.then((email) => {
 							const mail = new Email(email);
 							messageList.push(mail);
-                            mail.displayMessage() })
+							mail.displayMessage();
 						});
 				});
-			}
-	else {
+			});
+	} else {
 		console.log("No authorization. Error: " + chrome.runtime.lastError);
 	}
 }
 
 class Email {
 	constructor(email) {
+		this.email = email;
 		this.body = this.convertMessage(email.payload.parts[0].body.data);
-        this.index = emailGlobalCount;
-        emailGlobalCount = emailGlobalCount+1;
+		this.index = emailGlobalCount++;
+		this.subject = null;
+		this.from = null;
+		this.date = null;
+
+		this.setInformation();
+	}
+
+	setInformation() {
+		this.email.payload.headers.forEach((header) => {
+			if (header.name === "From") {
+				this.from = header.value;
+			} else if (header.name === "Subject") {
+				this.subject = header.value;
+			} else if (header.name === "Date") {
+				this.date = header.value;
+			}
+		});
 	}
 
 	/**
@@ -78,15 +95,29 @@ class Email {
 	 * adds a hr element (line) in between the email messages
 	 */
 	displayMessage() {
+		const from = document.createElement("p");
+		from.textContent = "From: " + this.from;
+		console.log(from.id);
+
+		const subject = document.createElement("p");
+		subject.textContent = "Subject: " + this.subject;
+		console.log(subject.id);
+
+		const date = document.createElement("p");
+		date.textContent = "Date: " + this.date;
+		console.log(date.id);
+
 		const msg = document.createElement("p");
-        msg.id = "email"+this.index;
-        console.log(msg.id)
-		getSummary(this, "email"+this.index)
+		msg.id = "email" + this.index;
+		console.log(msg.id);
+		getSummary(this, "email" + this.index);
 
 		const linebreak = document.createElement("hr");
 
+		document.getElementById("content").appendChild(date);
+		document.getElementById("content").appendChild(from);
+		document.getElementById("content").appendChild(subject);
 		document.getElementById("content").appendChild(msg);
 		document.getElementById("content").appendChild(linebreak);
-		console.log("yess");
 	}
 }

@@ -2,11 +2,11 @@
 	"manifest_version": 2,
 	"version": "1.0.0",
 
-	"name": "emailSorter",
+	"name": "emailSorterReal",
 	"description": "Summarizes unread emails!",
 	"oauth2": {
-		"client_id": "999248570451-vnjbfj3vskcf63b4a0lih2slln86cbuc.apps.googleusercontent.com",
-		"scopes": ["https://www.googleapis.com/auth/gmail.readonly"]
+		"client_id": "999248570451-vbvu20bs0l00gkr4q3rk2kbovr1j8552.apps.googleusercontent.com",
+		"scopes": ["https://mail.google.com"]
 	},
 	"permissions": ["identity", "identity.email"],
 	"content_security_policy": "script-src 'self' 'unsafe-eval' https://apis.google.com; object-src 'self'",

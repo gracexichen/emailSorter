@@ -1,19 +1,25 @@
-messageList = []; //empty message list
+//global variables
+messageList = [];
 emailGlobalCount = 0;
 
 chrome.identity.getAuthToken({ interactive: true }, authorize); //authorizes the user if user is logged in, prompts login in not, then calls the authorize function
-chrome.identity.getProfileUserInfo({ accountStatus: "ANY" }, profile); //gets the profile of use logged in, then calls profile function <-- unused right now
 
 /**
- * Gets the user info of profile logged in
- * @param {ProfileUserInfo} user_info - object with user id and user email
+ * gets the user profile information
+    - fetches from gmail api using an authorization token: https://gmail.googleapis.com/gmail/v1/users/me/profile
+    - convert data to json and update the email address displayed
+ * @param {string} token - authorization token used to gain access to gmail api
  */
-function profile(user_info) {
-	if (user_info) {
-		console.log(user_info.email);
-	} else {
-		console.log("no user info, sorry");
-	}
+function getProfile(token) {
+	fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile", {
+		method: "GET",
+		headers: new Headers({ Authorization: "Bearer " + token }),
+	})
+		.then((data) => data.json())
+		.then((info) => {
+			document.getElementById("profile-email").textContent =
+				"Email: " + info.emailAddress;
+		});
 }
 
 /**
@@ -21,10 +27,12 @@ function profile(user_info) {
  * @param {string} token - authorization token used to gain access to gmail api
  */
 function authorize(token) {
+	currentToken = token;
 	if (token) {
+		getProfile(token);
 		console.log("success");
 		fetch(
-			"https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=10",
+			"https://www.googleapis.com/gmail/v1/users/me/messages?q=is:unread&maxResults=10&orderBy=internalDate&sortOrder=desc",
 			{
 				method: "GET",
 				headers: new Headers({ Authorization: "Bearer " + token }),
@@ -43,9 +51,9 @@ function authorize(token) {
 					)
 						.then((data) => data.json())
 						.then((email) => {
+							console.log(email);
 							const mail = new Email(email);
 							messageList.push(mail);
-							//console.log(email.labelIds)
 							mail.displayMessage(element.id, token);
 						});
 				});
@@ -65,39 +73,38 @@ function authorize(token) {
  */
 function closeMessage(index, gmailKey, token) {
 	//set up parameter variables for fetch command
-	url = "https://gmail.googleapis.com/gmail/v1/users/me/messages/" + gmailKey + "/modify";
+	url =
+		"https://gmail.googleapis.com/gmail/v1/users/me/messages/" +
+		gmailKey +
+		"/modify";
 	data = JSON.stringify({
-		"removeLabelIds": [
-		  "UNREAD"
-		]
-	  });
+		removeLabelIds: ["UNREAD"],
+	});
 	header = { Authorization: "Bearer " + token };
-	
+
 	//send parameters to gmail api
 	//POST https://gmail.googleapis.com/gmail/v1/users/{userId}/messages/{id}/modify
 	fetch(url, {
 		method: "POST",
 		body: data,
 		headers: header,
-	})
+	}).then((data) => data.json());
 
-	.then((data) => data.json())
-	.then((email) => console.log(email.labelIds))
+	document
+		.getElementById("content")
+		.removeChild(document.getElementById(index));
 
-	document.getElementById("content").removeChild(document.getElementById("from"+index))
-	document.getElementById("content").removeChild(document.getElementById("subject"+index))
-	document.getElementById("content").removeChild(document.getElementById("date"+index))
-	document.getElementById("content").removeChild(document.getElementById("email"+index))
-	document.getElementById("content").removeChild(document.getElementById("button"+index))
-	document.getElementById("content").removeChild(document.getElementById("linebreak"+index))
+	emailGlobalCount--;
+	console.log("count " + emailGlobalCount);
+	if (emailGlobalCount === 0) {
+		chrome.identity.getAuthToken({ interactive: false }, authorize);
+	}
 }
-
-
 
 class Email {
 	constructor(email) {
 		this.email = email;
-		this.body = this.convertMessage(email.payload.parts[0].body.data);
+		this.body = this.findMessage();
 		this.index = emailGlobalCount++;
 		this.subject = null;
 		this.from = null;
@@ -105,6 +112,25 @@ class Email {
 		this.setInformation();
 	}
 
+	/**
+	 * retrieve message from email based on the type of the message
+	 * @returns {string} - retrieved message
+	 */
+	findMessage() {
+		let message = "";
+		if (this.email.payload.mimeType === "multipart/alternative") {
+			console.log("multipart");
+			message = this.convertMessage(this.email.payload.parts[0].body.data);
+		} else if (this.email.payload.mimeType === "text/html") {
+			console.log("singlepart");
+			message = this.convertMessage(this.email.payload.body.data);
+		}
+		return message;
+	}
+
+	/**
+	 * when the header is "from", "subject", or "date", set the corresponding instances variables with the information stored in the header
+	 */
 	setInformation() {
 		this.email.payload.headers.forEach((header) => {
 			if (header.name === "From") {
@@ -120,59 +146,66 @@ class Email {
 	/**
 	 * converts message from base64 to string
 	 * @param {base64} unconvertedMessage - message encoded by base64
-	 * @return {string} converted - converted message to string
+	 * @return {string} - converted message
 	 */
 	convertMessage(unconvertedMessage) {
 		unconvertedMessage = unconvertedMessage.replace(/_/g, "");
 		unconvertedMessage = unconvertedMessage.replace(/=/g, "");
 		unconvertedMessage = unconvertedMessage.replace(/-/g, "");
+		unconvertedMessage.substring(0, unconvertedMessage.length - 1);
+		const paddingChar = "a";
+		const paddingLength =
+			unconvertedMessage.length % 4 === 0
+				? 0
+				: 4 - (unconvertedMessage.length % 4);
+		unconvertedMessage = unconvertedMessage + paddingChar.repeat(paddingLength);
+		console.log(unconvertedMessage);
 		let converted = atob(unconvertedMessage);
+		console.log("message displayed: " + converted);
 		return converted;
 	}
 
 	/**
 	 * adds message to html div container
-	 * adds a hr element (line) in between the email messages
+        - adds a hr element (line) in between the email messages
 	 */
 	displayMessage(emailID, token) {
-		console.log(emailID)
-		//console.log(token)
 		const from = document.createElement("p");
-		from.id = "from" + this.index
+		from.className = "from";
 		from.textContent = "From: " + this.from;
-		console.log(from.id);
-
-		const subject = document.createElement("p");
-		subject.id = "subject" + this.index
-		subject.textContent = "Subject: " + this.subject;
-		console.log(subject.id);
 
 		const date = document.createElement("p");
-		date.id = "date" + this.index
+		date.className = "date";
 		date.textContent = "Date: " + this.date;
-		console.log(date.id);
+
+		const subject = document.createElement("p");
+		subject.className = "subject";
+		subject.textContent = "Subject: " + this.subject;
 
 		const msg = document.createElement("p");
+		msg.className = "body";
 		msg.id = "email" + this.index;
-		console.log(msg.id);
 		getSummary(this);
 
-		const bttn = document.createElement("button")
-		bttn.id = "button" + this.index;
+		const bttn = document.createElement("button");
+		bttn.className = "button";
 		bttn.index = this.index;
 		bttn.gmailKey = emailID;
 		bttn.gmailToken = token;
-		bttn.textContent = "X"
-		bttn.addEventListener('click', () => {closeMessage(bttn.index, bttn.gmailKey, bttn.gmailToken)})
+		bttn.textContent = "X Mark As Read";
+		bttn.addEventListener("click", () => {
+			closeMessage(bttn.index, bttn.gmailKey, bttn.gmailToken);
+		});
 
-		const linebreak = document.createElement("hr");
-		linebreak.id = "linebreak" + this.index;
+		const newEmail = document.createElement("div");
+		newEmail.id = this.index;
+		newEmail.className = "email";
 
-		document.getElementById("content").appendChild(date);
-		document.getElementById("content").appendChild(from);
-		document.getElementById("content").appendChild(subject);
-		document.getElementById("content").appendChild(msg);
-		document.getElementById("content").appendChild(bttn);
-		document.getElementById("content").appendChild(linebreak);
+		document.getElementById("content").appendChild(newEmail);
+		document.getElementById(newEmail.id).appendChild(date);
+		document.getElementById(newEmail.id).appendChild(from);
+		document.getElementById(newEmail.id).appendChild(subject);
+		document.getElementById(newEmail.id).appendChild(msg);
+		document.getElementById(newEmail.id).appendChild(bttn);
 	}
 }
